@@ -1,0 +1,152 @@
+<div class="lobby-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="bg-grid"></div>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="eyebrow">Multijugador</div>
+      <div class="wordmark">Blackjack</div>
+    </div>
+    <div class="nav-label">Menú</div>
+    <div class="nav-item active"><span>♠</span> Mesas</div>
+    <div class="nav-item"><span>◈</span> Mis Estadísticas</div>
+
+    <div class="admin-section" *ngIf="isAdmin()">
+      <div class="nav-label">Administrador</div>
+      <div class="nav-item admin-btn" (click)="openCreateModal()">
+        <span>+</span> Nueva Mesa
+      </div>
+    </div>
+
+    <div class="sidebar-player" *ngIf="player">
+      <div class="player-avatar" [style.background]="player.avatarColor"></div>
+      <div class="player-meta">
+        <div class="player-name">{{ player.username }}</div>
+        <div class="player-status">
+          <span class="status-dot"></span>
+          <span [class.admin-label]="isAdmin()">{{ isAdmin() ? 'Administrador' : 'En línea' }}</span>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()" title="Cerrar sesión">⏏</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div>
+        <div class="main-title">Mesas Activas</div>
+        <div class="main-subtitle">Elige una silla y únete a la acción</div>
+      </div>
+      <div class="right-header">
+        <div class="balance-chip" *ngIf="player">
+          <span class="balance-label">Saldo</span>
+          <span class="balance-val">{{ formatCOP(player.balance) }}</span>
+        </div>
+        <div class="live-badge">
+          <div class="live-dot"></div> En Vivo
+        </div>
+        <button class="btn-refresh" (click)="loadTables()" title="Actualizar mesas">↻</button>
+      </div>
+    </div>
+
+    <!-- Banner de error -->
+    <div class="error-banner" *ngIf="loadError">
+      <span>⚠ {{ loadError }}</span>
+      <button (click)="loadTables()">Reintentar</button>
+    </div>
+
+    <!-- Estado vacío -->
+    <div class="empty-state" *ngIf="!loadError && tables.length === 0">
+      <div class="empty-icon">♠</div>
+      <div class="empty-text">No hay mesas disponibles</div>
+      <div class="empty-sub" *ngIf="isAdmin()">Crea una nueva mesa desde el menú de administrador</div>
+      <div class="empty-sub" *ngIf="!isAdmin()">Espera a que el administrador cree una mesa</div>
+    </div>
+
+    <!-- Cuadrícula de mesas -->
+    <div class="tables-grid" *ngIf="tables.length > 0">
+      <div *ngFor="let table of tables" class="table-card" [class.full]="isFull(table)" (click)="join(table)">
+
+        <!-- Botón eliminar (solo admin) -->
+        <button
+          *ngIf="isAdmin()"
+          class="btn-delete"
+          (click)="deleteTable(table, $event)"
+          title="Eliminar mesa">
+          ✕
+        </button>
+
+        <div class="felt-preview">
+          <div class="felt-arc"></div>
+          <div class="dealer-zone">
+            <div class="dealer-label">Crupier</div>
+            <div class="mini-cards">
+              <div class="mini-card">A♠</div>
+              <div class="mini-card down"></div>
+            </div>
+          </div>
+          <div class="badge" [class.full-badge]="isFull(table)" [class.open-badge]="!isFull(table)">
+            {{ isFull(table) ? 'LLENA' : (table.maxPlayers - table.playerCount) + ' LIBRE' }}
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="table-name">{{ table.name }}</div>
+          <div class="table-meta">Mín. {{ formatCOP(table.minBet) }}</div>
+          <div class="table-stats">
+            <div class="stat">
+              <div class="stat-val" [style.color]="isFull(table) ? '#f43f5e' : '#00e5a0'">{{ table.playerCount }} / {{ table.maxPlayers }}</div>
+              <div class="stat-label">Jugadores</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">{{ formatCOP(table.minBet) }}</div>
+              <div class="stat-label">Apuesta Mín.</div>
+            </div>
+          </div>
+          <div class="seats-bar">
+            <div *ngFor="let seat of [].constructor(table.maxPlayers); let i = index"
+                 class="seat-pip" [class.taken]="i < table.playerCount"></div>
+          </div>
+          <button class="btn-join" [class.disabled]="isFull(table)"
+                  (click)="join(table); $event.stopPropagation()">
+            {{ isFull(table) ? 'MESA LLENA' : 'UNIRSE ▶' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: crear mesa (solo admin) -->
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-shimmer"></div>
+    <div class="modal-title">Nueva Mesa</div>
+
+    <div class="modal-label">Nombre de la Mesa</div>
+    <div class="modal-input-wrap">
+      <input type="text" [(ngModel)]="newTableName" placeholder="Ej: MESA-01" maxlength="20" />
+    </div>
+
+    <div class="modal-label">Apuesta Mínima (COP)</div>
+    <div class="modal-input-wrap">
+      <select [(ngModel)]="newTableMinBet">
+        <option [value]="500">$500</option>
+        <option [value]="1000">$1.000</option>
+        <option [value]="5000">$5.000</option>
+        <option [value]="10000">$10.000</option>
+        <option [value]="50000">$50.000</option>
+      </select>
+    </div>
+
+    <div class="modal-error" *ngIf="createError">{{ createError }}</div>
+
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" (click)="closeCreateModal()">Cancelar</button>
+      <button class="btn-modal-confirm" [disabled]="!newTableName.trim() || creating" (click)="submitCreateTable()">
+        {{ creating ? 'Creando...' : 'Crear Mesa' }}
+      </button>
+    </div>
+  </div>
+</div>

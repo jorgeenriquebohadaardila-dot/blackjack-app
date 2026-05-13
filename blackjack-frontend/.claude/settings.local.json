@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx ng *)",
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:8080/api/tables)",
+      "Bash(curl *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":8080\")",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(./mvnw spring-boot:run)",
+      "Bash(xargs kill -9)",
+      "Bash(echo \"Backend PID: $!\")",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(echo \"ng serve PID: $!\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(pkill -f \"ng serve\")",
+      "Bash(nohup npx ng serve --host 0.0.0.0 --port 4200)",
+      "Bash(echo \"PID: $!\")"
+    ]
+  }
+}

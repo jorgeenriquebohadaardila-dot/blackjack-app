@@ -1,0 +1,193 @@
+<div class="game-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Connecting / error -->
+  <div class="connecting-screen" *ngIf="connecting() || connectionError()">
+    <ng-container *ngIf="connecting() && !connectionError()">
+      <div class="spinner"></div>
+      <div class="connecting-text">Conectando a la mesa...</div>
+    </ng-container>
+    <ng-container *ngIf="connectionError()">
+      <div class="connect-error-title">No se pudo cargar la mesa</div>
+      <p class="connect-error-body">{{ connectionError() }}</p>
+      <p class="connect-error-hint">En la pestaña Red (F12), revisa si fallan las peticiones a <code>/api</code> o <code>/ws</code>.</p>
+      <div class="connect-error-actions">
+        <button type="button" class="btn-result" (click)="retryConnect()">REINTENTAR</button>
+        <button type="button" class="btn-result-secondary" (click)="abandonToLobbyWhileLoading()">IR AL LOBBY</button>
+      </div>
+    </ng-container>
+  </div>
+
+  <ng-container *ngIf="!connecting() && !connectionError()">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+      <button class="btn-back" (click)="goToLobby()">← LOBBY</button>
+      <div class="table-info">
+        <div class="table-name">{{ tableState()?.name || 'Mesa ' + tableId }}</div>
+        <div class="table-badge" [class.badge-playing]="tableState()?.status === 'PLAYING'" [class.badge-waiting]="tableState()?.status !== 'PLAYING'">
+          {{ translateStatus(tableState()?.status) }}
+        </div>
+      </div>
+      <div class="player-hud" *ngIf="getMyPlayer() as me">
+        <div class="hud-chip">
+          <div class="hud-label">SALDO</div>
+          <div class="hud-val">{{ formatCOP(me.balance) }}</div>
+        </div>
+        <div class="hud-chip accent" *ngIf="me.bet > 0">
+          <div class="hud-label">APUESTA</div>
+          <div class="hud-val">{{ formatCOP(me.bet) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="needs-bet-bar" *ngIf="needsBetBanner()">
+      <span>La mesa está esperando tu apuesta para repartir cartas.</span>
+      <button type="button" class="btn-needs-bet" (click)="goBetScreen()">IR A APOSTAR</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-felt">
+        <div class="felt-inner-ring"></div>
+
+        <!-- Dealer zone -->
+        <div class="dealer-zone">
+          <div class="zone-label">CRUPIER</div>
+          <div class="cards-row" *ngIf="dealerCardList().length; else dealerEmpty">
+            <ng-container *ngFor="let card of dealerCardList()">
+              <ng-container *ngIf="parseCard(card) as cd">
+                <div class="card" [class.red]="cd.isRed" [class.card-hidden]="cd.hidden">
+                  <ng-container *ngIf="!cd.hidden">
+                    <span class="rank rank-tl">{{ cd.rank }}</span>
+                    <span class="suit-center">{{ cd.suit }}</span>
+                    <span class="rank rank-br">{{ cd.rank }}</span>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+          <ng-template #dealerEmpty>
+            <div class="cards-row">
+              <div class="card card-hidden"></div>
+              <div class="card card-hidden"></div>
+            </div>
+          </ng-template>
+          <div class="score-pill" *ngIf="(tableState()?.dealerScore ?? 0) > 0">
+            <span class="score-pill-label" *ngIf="tableState()?.status === 'PLAYING'">Visible</span>
+            {{ tableState()?.dealerScore }}
+          </div>
+          <div class="dealer-hint" *ngIf="tableState()?.status === 'PLAYING'">
+            Puntuación visible del crupier (solo la carta boca arriba; la otra sigue oculta hasta que termines).
+          </div>
+        </div>
+
+        <!-- Center decoration -->
+        <div class="felt-center">
+          <div class="felt-text">BLACKJACK PAGA 3:2</div>
+          <div class="felt-sub">El as cuenta 11 u 1 para no pasarte de 21.</div>
+          <div class="felt-cards-left" *ngIf="tableState()?.remainingCards">
+            {{ tableState()?.remainingCards }} cartas
+          </div>
+        </div>
+
+        <!-- Seats arc -->
+        <div class="seats-arc">
+          <div
+            *ngFor="let seat of getSeats(); let i = index"
+            class="seat"
+            [class.seat-empty]="!seat"
+            [class.seat-active]="seat?.status === 'PLAYING'"
+            [class.seat-me]="!!seat && !!player && samePlayerId(seat.id, player.id)"
+            [class.seat-stand]="seat?.status === 'STAND'">
+
+            <!-- Empty seat placeholder -->
+            <ng-container *ngIf="!seat">
+              <div class="seat-placeholder">
+                <div class="seat-num">{{ i + 1 }}</div>
+              </div>
+            </ng-container>
+
+            <!-- Occupied seat -->
+            <ng-container *ngIf="seat">
+              <div class="seat-cards">
+                <ng-container *ngFor="let card of parseCards(seat.hand)">
+                  <ng-container *ngIf="parseCard(card) as cd">
+                    <div class="card card-sm" [class.red]="cd.isRed" [class.card-hidden]="cd.hidden">
+                      <ng-container *ngIf="!cd.hidden">
+                        <span class="rank rank-tl">{{ cd.rank }}</span>
+                        <span class="suit-center sm">{{ cd.suit }}</span>
+                      </ng-container>
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
+              <div class="seat-panel">
+                <div class="seat-avatar" [style.background]="seat.avatarColor"></div>
+                <div class="seat-info">
+                  <div class="seat-username">{{ seat.username }}</div>
+                  <div class="seat-score" *ngIf="parseCards(seat.hand).length > 0">
+                    <span class="seat-card-count">{{ parseCards(seat.hand).length }} cartas</span>
+                    <span class="seat-total" [class.bust]="seat.score > 21">Total: {{ seat.score }}</span>
+                  </div>
+                </div>
+                <div class="seat-bet" *ngIf="seat.bet > 0">{{ formatCOP(seat.bet) }}</div>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Action buttons (my turn) -->
+    <div class="action-bar" *ngIf="isMyTurn()">
+      <div class="turn-label">TU TURNO</div>
+      <div class="action-btns">
+        <button class="btn-action btn-double" type="button" (click)="double()" [disabled]="!canDouble()" [class.btn-action-disabled]="!canDouble()">
+          <span class="a-icon">×2</span>
+          <span class="a-label">DOBLAR</span>
+        </button>
+        <button class="btn-action btn-stand" (click)="stand()">
+          <span class="a-icon">✋</span>
+          <span class="a-label">PLANTARSE</span>
+        </button>
+        <button class="btn-action btn-hit" (click)="hit()">
+          <span class="a-icon">+1</span>
+          <span class="a-label">PEDIR</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Waiting indicator -->
+    <div class="waiting-bar" *ngIf="!isMyTurn() && tableState()?.status === 'PLAYING'">
+      <div class="waiting-dot"></div>
+      <span>Esperando turno...</span>
+    </div>
+
+  </ng-container>
+
+  <!-- Result overlay -->
+  <div class="result-overlay" *ngIf="showResult()">
+    <div class="result-card" [ngClass]="'result-' + resultType">
+      <div class="result-glow"></div>
+      <div class="result-eyebrow">RESULTADO</div>
+      <div class="result-label">{{ resultLabel }}</div>
+      <div class="result-detail" *ngIf="getMyPlayer() as me">
+        <span>Tú: <strong>{{ me.score }}</strong></span>
+        <span class="vs">vs</span>
+        <span>Dealer: <strong>{{ tableState()?.dealerScore }}</strong></span>
+      </div>
+      <div class="result-countdown" *ngIf="nextRoundCountdown > 0">
+        Nueva mano en {{ nextRoundCountdown }}s · podrás apostar de nuevo
+      </div>
+      <div class="result-actions">
+        <button type="button" class="btn-result" (click)="closeResult()">NUEVA APUESTA</button>
+        <button type="button" class="btn-result-secondary" (click)="goToLobby()">LOBBY</button>
+      </div>
+    </div>
+  </div>
+
+</div>

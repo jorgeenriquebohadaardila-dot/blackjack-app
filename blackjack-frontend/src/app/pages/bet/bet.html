@@ -1,0 +1,101 @@
+<div class="bet-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="bg-grid"></div>
+
+  <div class="stage">
+    <div class="logo-block">
+      <div class="eyebrow">Multiplayer</div>
+      <div class="logo-title">Blackjack</div>
+      <div class="logo-sub">Elige Tu Apuesta</div>
+    </div>
+
+    <div class="glass-card">
+      <div class="shimmer-top"></div>
+
+      <!-- Player info + balance -->
+      <div class="player-row" *ngIf="player">
+        <div class="player-avatar" [style.background]="player.avatarColor"></div>
+        <div class="player-meta">
+          <div class="player-name">{{ player.username }}</div>
+          <div class="player-balance">Saldo: {{ formatCOP(player.balance) }}</div>
+        </div>
+        <button class="btn-back" (click)="goToLobby()">← Lobby</button>
+      </div>
+
+      <div class="section-divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">Tu Apuesta</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Bet amount display -->
+      <div class="bet-display">
+        <div class="bet-amount" [class.has-bet]="betAmount > 0">
+          {{ betAmount > 0 ? formatCOP(betAmount) : '—' }}
+        </div>
+
+        <!-- Chips strip (accumulated) -->
+        <div class="chips-strip" *ngIf="betChips.length > 0">
+          <div
+            *ngFor="let chip of visibleChips"
+            class="chip-mini"
+            [style.background]="chip.color"
+            [style.color]="chip.textColor">
+          </div>
+          <span class="more-label" *ngIf="betChips.length > 10">+{{ betChips.length - 10 }}</span>
+        </div>
+        <div class="bet-empty-hint" *ngIf="betChips.length === 0">
+          Haz clic en una ficha para apostar
+        </div>
+      </div>
+
+      <div class="section-divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">Fichas</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Chip rack -->
+      <div class="chip-rack">
+        <button
+          *ngFor="let chip of chips"
+          class="chip-btn"
+          [style.background]="chip.color"
+          [style.color]="chip.textColor"
+          [disabled]="!player || betAmount + chip.value > player.balance"
+          (click)="addChip(chip)">
+          <span class="chip-label">{{ chip.label }}</span>
+        </button>
+      </div>
+
+      <!-- Min bet indicator -->
+      <div class="min-bet-row" *ngIf="minBet > 0">
+        <span class="min-bet-label">Apuesta mínima:</span>
+        <span class="min-bet-val" [class.min-not-met]="betAmount > 0 && betAmount < minBet">
+          {{ formatCOP(minBet) }}
+        </span>
+      </div>
+
+      <!-- Actions -->
+      <div class="bet-actions">
+        <button class="btn-secondary btn-undo" [disabled]="betChips.length === 0" (click)="removeLastChip()">
+          ↩
+        </button>
+        <button class="btn-secondary btn-clear" [disabled]="betAmount === 0" (click)="clearBet()">
+          BORRAR
+        </button>
+        <button class="btn-primary btn-sit"
+                [disabled]="betAmount === 0 || loading || (minBet > 0 && betAmount < minBet)"
+                (click)="sitDown()">
+          <span *ngIf="!loading">SENTARSE ▶</span>
+          <span *ngIf="loading" class="loading-dots">...</span>
+        </button>
+      </div>
+
+      <div class="join-error" *ngIf="joinError">⚠ {{ joinError }}</div>
+
+      <div class="card-footer">Mesa · <span>{{ tableId }}</span></div>
+    </div>
+  </div>
+</div>

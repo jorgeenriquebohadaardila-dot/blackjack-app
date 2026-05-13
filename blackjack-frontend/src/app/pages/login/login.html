@@ -1,0 +1,41 @@
+<div class="login-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="suits-bg">♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣</div>
+
+  <div class="stage">
+    <div class="logo-block">
+      <div class="eyebrow">Multiplayer</div>
+      <div class="logo-title">Blackjack</div>
+      <div class="logo-sub">Live Table · Real Time</div>
+    </div>
+
+    <div class="glass-card">
+      <div class="shimmer-top"></div>
+
+      <div class="section-label">Usuario</div>
+      <div class="input-wrap">
+        <span class="input-icon">♠</span>
+        <input type="text" [(ngModel)]="username" placeholder="Tu alias..." (keyup.enter)="login()" />
+      </div>
+
+      <div class="section-label">Contraseña</div>
+      <div class="input-wrap">
+        <span class="input-icon">◈</span>
+        <input type="password" [(ngModel)]="password" placeholder="••••••••" (keyup.enter)="login()" />
+      </div>
+
+      <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+      <button class="btn-enter" (click)="login()" [disabled]="loading">
+        <span *ngIf="!loading">▶ INICIAR SESIÓN</span>
+        <span *ngIf="loading" class="loading-dots">...</span>
+      </button>
+
+      <div class="card-footer">
+        ¿No tienes cuenta?
+        <span class="link" (click)="goToRegister()">Regístrate</span>
+      </div>
+    </div>
+  </div>
+</div>
